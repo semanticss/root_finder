@@ -1,3 +1,4 @@
+mod polynomial;
 mod roots;
 
 fn main() {
