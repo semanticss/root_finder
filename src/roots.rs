@@ -1,6 +1,8 @@
 use crate::polynomial::*;
 use nalgebra::{Complex, DMatrix, DVector};
 use pyo3::*;
+use rayon::iter::IntoParallelIterator;
+use rayon::prelude::*;
 use std::fmt;
 
 pub fn newton_raphson(
@@ -52,4 +54,38 @@ pub fn companion(coefficients: Vec<f64>) -> Vec<(f64, f64)> {
 
     let result = roots.iter().map(|c| (c.re, c.im)).collect();
     result
+}
+
+#[pyfunction]
+pub fn batching_companion(flat_coeffs: Vec<f64>, degree: usize) -> (Vec<f64>, Vec<f64>) {
+    let chunk_size = degree + 1;
+    let results: Vec<(f64, f64)> = flat_coeffs
+        .par_chunks(chunk_size)
+        .flat_map(|cfs| {
+            let leading = cfs[degree];
+            let mut m = DMatrix::zeros(degree, degree);
+
+            for i in 1..degree {
+                m[(i, i - 1)] = 1.0;
+            }
+            for i in 0..degree {
+                m[(i, degree - 1)] = -cfs[i] / leading;
+            }
+
+            let roots = m.complex_eigenvalues();
+            let mut owned = Vec::with_capacity(degree);
+            for r in roots.iter() {
+                owned.push((r.re, r.im));
+            }
+            owned
+        })
+        .collect();
+
+    let mut re = Vec::with_capacity(results.len());
+    let mut im = Vec::with_capacity(results.len());
+    for (r, i) in results {
+        re.push(r);
+        im.push(i);
+    }
+    (re, im)
 }
