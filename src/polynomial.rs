@@ -1,7 +1,7 @@
+use nalgebra::*;
 use std::fmt;
-
 pub struct Polynomial<T> {
-    pub coeffs: Vec<T>,
+    pub coeffs: Vec<f64>,
     pub function: Box<dyn Fn(T) -> T>,
     pub derivative: Box<dyn Fn(T) -> T>,
 }

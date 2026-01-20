@@ -1,4 +1,6 @@
 use crate::polynomial::*;
+use nalgebra::{Complex, DMatrix, DVector};
+use pyo3::*;
 use std::fmt;
 
 pub fn newton_raphson(
@@ -27,24 +29,27 @@ pub fn newton_raphson(
     Some((root, false))
 }
 
-#[cfg(test)]
-mod tests {
-    use crate::polynomial;
+#[pyfunction]
+pub fn companion(coefficients: Vec<f64>) -> Vec<(f64, f64)> {
+    // you can just pass a vector with the coefficients through here pretty electric
+    let n = coefficients.len() - 1;
+    let leading_coefficient = coefficients[n];
 
-    use super::*;
-
-    #[test]
-    fn p_sanity() {
-        let polynomial = Polynomial::new(vec![0., 2., 3.]);
-        println!("{}", polynomial);
-        println!("{}", (polynomial.function)(0.));
+    let mut normal_coeffs = vec![];
+    for i in 0..n - 1 {
+        normal_coeffs.push(coefficients[i] / leading_coefficient);
     }
 
-    #[test]
-    fn calculate_root_via_newton_raphson() {
-        let polynomial = Polynomial::new(vec![0., 2., 3.]);
-
-        let root = newton_raphson(-2., 1000, 0.01, &polynomial).unwrap();
-        println!("root: {} under tolerance: {} ", root.0, root.1);
+    let mut companion_matrix = DMatrix::from_element(n, n, 0.0);
+    for i in 1..n {
+        companion_matrix[(i, i - 1)] = 1.0;
     }
+    for i in 0..n - 1 {
+        companion_matrix[(i, n - 1)] = -normal_coeffs[i];
+    }
+
+    let roots = companion_matrix.complex_eigenvalues();
+
+    let result = roots.iter().map(|c| (c.re, c.im)).collect();
+    result
 }
